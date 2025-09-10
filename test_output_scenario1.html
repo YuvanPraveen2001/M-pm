@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Query Results</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 2em;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1em;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .query-details {
+            background-color: #eee;
+            padding: 1em;
+            border-radius: 5px;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Query Results</h1>
+        <div class="query-details">
+            <p><strong>Your Question:</strong> Show me all users</p>
+            <p><strong>Generated SQL Query:</strong> <code>Error generating SQL.</code></p>
+        </div>
+
+
+            <p class="error">Error: Could not connect to Ollama. Please make sure Ollama is running and the specified models are available.</p>
+
+
+        <br>
+        <a href="/">Ask another question</a>
+    </div>
+</body>
+</html>

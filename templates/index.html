@@ -42,15 +42,21 @@
         <h1>Ask Your Database a Question</h1>
 
         <div class="info-box">
-            <h4>Important: Two-Step Process</h4>
-            <p>This application uses a two-step process:</p>
+            <h4>How to Use This Application</h4>
+            <p>You have two options for providing the database schema:</p>
             <ol>
-                <li><strong>Index Your Database Schema:</strong> Before you can ask questions, you must first index your database's schema. Run the following command in your terminal:
-                    <br><code>python index_schema.py "your_database_uri"</code>
+                <li>
+                    <strong>(Option A) Pre-index your database:</strong>
+                    Run this command once to teach the application your schema:
+                    <br><code>python index_schema.py "your_database_uri"</code><br>
+                    Then, just fill in the "Database Connection URI" and "Your Question" fields below.
                 </li>
-                <li><strong>Ask a Question:</strong> Once your schema is indexed, you can use the form below to ask questions.</li>
+                <li>
+                    <strong>(Option B) Paste your schema directly:</strong>
+                    If you have a large number of tables, you can paste just the relevant schema information into the "Manual Schema Definition" box below.
+                </li>
             </ol>
-            <p>Make sure your database URI matches the one you used for indexing. See the <a href="README.md" target="_blank">README</a> for more details.</p>
+            <p>See the <a href="README.md" target="_blank">README</a> for more details.</p>
         </div>
 
         <form action="/query" method="post">
@@ -61,6 +67,21 @@
 
             <label for="query">Your Question</label>
             <textarea id="query" name="query" rows="4" required></textarea>
+
+            <hr style="margin: 2em 0;">
+
+            <label for="schema_text">Manual Schema Definition (Optional)</label>
+            <textarea id="schema_text" name="schema_text" rows="10" placeholder="If you have a large schema, paste only the relevant tables and columns here. Leave blank to use the pre-indexed schema."></textarea>
+            <p><i>The schema should be in a specific format, with each table and column on a new line. For example:
+<pre>
+[table: users]
+[table: users] [col: id] [type: INTEGER]
+[table: users] [col: name] [type: VARCHAR]
+[table: products]
+[table: products] [col: product_id] [type: INTEGER]
+</pre>
+            </i></p>
+
 
             <button type="submit">Ask</button>
         </form>
