@@ -1,6 +1,7 @@
 import os
 from flask import Flask, render_template, request
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_community.chat_models import ChatOllama
@@ -57,61 +58,91 @@ def index():
 def query():
     db_uri = request.form.get('db_uri')
     natural_language_query = request.form.get('query')
-    schema_text = request.form.get('schema_text') # New field
+    schema_text = request.form.get('schema_text')
 
     if not db_uri or not natural_language_query:
         return render_template('result.html', error="Database URI and query are required.")
 
-    sql_query = ""
     try:
         embeddings = OllamaEmbeddings(model=EMBED_MODEL)
-
-        # Get the retriever based on whether schema_text is provided
         retriever = get_vector_store_retriever(embeddings, db_uri, schema_text)
-
         llm = ChatOllama(model=CHAT_MODEL)
-
-        template = """
-        Based on the table schema below, write a SQL query that would answer the user's question.
-        Pay attention to the user's question to determine the necessary tables and columns.
-        Your response should only be the SQL query, without any explanation or markdown.
-
-        Schema:
-        {context}
-
-        Question: {question}
-
-        SQL Query:
-        """
-        prompt = ChatPromptTemplate.from_template(template)
-
-        rag_chain = (
-            {"context": retriever, "question": RunnablePassthrough()}
-            | prompt
-            | llm
-            | StrOutputParser()
-        )
-
-        print("Generating SQL query...")
-        sql_query = rag_chain.invoke(natural_language_query)
-        print(f"Generated SQL: {sql_query}")
-
-        # Clean up the generated query from markdown, if present
-        if "```sql" in sql_query:
-            sql_query = sql_query.split("```sql")[1].split("```")[0].strip()
-        elif "```" in sql_query:
-            sql_query = sql_query.split("```")[1].split("```")[0].strip()
-
         engine = create_engine(db_uri)
-        with engine.connect() as connection:
-            results = connection.execute(text(sql_query)).mappings().all()
 
-        results_as_dicts = [dict(row) for row in results]
+        sql_query = ""
+        last_error = ""
 
+        for attempt in range(3):
+            print(f"--- Attempt {attempt + 1} ---")
+
+            error_feedback = ""
+            if last_error:
+                error_feedback = f"""
+The previous query I tried was:
+```sql
+{sql_query}
+```
+It failed with the following error:
+`{last_error}`
+
+Please correct the query based on this error.
+"""
+
+            template = f"""
+            Based on the table schema below, write a SQL query that would answer the user's question.
+            Pay attention to the user's question to determine the necessary tables and columns.
+            Your response should only be the SQL query, without any explanation or markdown.
+
+            Schema:
+            {{context}}
+
+            {error_feedback}
+
+            Question: {{question}}
+
+            SQL Query:
+            """
+            prompt = ChatPromptTemplate.from_template(template)
+
+            rag_chain = (
+                { "context": retriever, "question": RunnablePassthrough() }
+                | prompt
+                | llm
+                | StrOutputParser()
+            )
+
+            print("Generating SQL query...")
+            sql_query = rag_chain.invoke(natural_language_query)
+            print(f"Generated SQL: {sql_query}")
+
+            if "```sql" in sql_query:
+                sql_query = sql_query.split("```sql")[1].split("```")[0].strip()
+            elif "```" in sql_query:
+                sql_query = sql_query.split("```")[1].split("```")[0].strip()
+
+            try:
+                with engine.connect() as connection:
+                    results = connection.execute(text(sql_query)).mappings().all()
+
+                results_as_dicts = [dict(row) for row in results]
+
+                return render_template('result.html',
+                                       query=natural_language_query,
+                                       sql_query=sql_query,
+                                       results=results_as_dicts)
+            except OperationalError as e:
+                last_error = str(e)
+                print(f"Query failed with error: {last_error}")
+                # Loop will continue for the next attempt
+            except Exception as e:
+                # For non-database errors, we probably want to stop.
+                raise e
+
+        # If all retries fail
         return render_template('result.html',
                                query=natural_language_query,
                                sql_query=sql_query,
-                               results=results_as_dicts)
+                               error=f"The query failed after multiple attempts. Last error: {last_error}")
 
     except Exception as e:
         error_message = str(e)
