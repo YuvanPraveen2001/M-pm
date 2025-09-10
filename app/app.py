@@ -59,6 +59,7 @@ def query():
     db_uri = request.form.get('db_uri')
     natural_language_query = request.form.get('query')
     schema_text = request.form.get('schema_text')
+    sql_query = ""
 
     if not db_uri or not natural_language_query:
         return render_template('result.html', error="Database URI and query are required.")
@@ -69,7 +70,6 @@ def query():
         llm = ChatOllama(model=CHAT_MODEL)
         engine = create_engine(db_uri)
 
-        sql_query = ""
         last_error = ""
 
         for attempt in range(3):
