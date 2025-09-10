@@ -7,7 +7,7 @@ from langchain_community.chat_models import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
-from app.schema_utils import get_schema_documents_from_text
+from schema_utils import get_schema_documents_from_text
 
 # It's a good practice to use a .env file for configuration
 from dotenv import load_dotenv
