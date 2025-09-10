@@ -28,31 +28,40 @@ def get_schema_documents_from_uri(db_uri: str):
 
 def get_schema_documents_from_text(schema_text: str):
     """
-    Parses a schema provided in a specific text format and converts it
+    Parses a schema provided as SQL CREATE TABLE statements and converts it
     into a list of Document objects.
     """
     documents = []
+    # Regex to find all CREATE TABLE statements
+    create_table_pattern = re.compile(r"CREATE TABLE (.*?)\s*\((.*?)\);", re.DOTALL | re.IGNORECASE)
 
-    # Regex to find all matches
-    table_pattern = re.compile(r"\[table: (.*?)\]")
-    column_pattern = re.compile(r"\[table: (.*?)\] \[col: (.*?)\] \[type: (.*?)\]")
+    # Regex to find column definitions within a CREATE TABLE statement
+    # This is a simplified regex; it assumes column names are valid identifiers and types don't contain parentheses
+    column_pattern = re.compile(r"^\s*(\w+)\s+([\w\(\)]+)", re.MULTILINE)
 
-    # Find all table definitions first
-    table_matches = table_pattern.findall(schema_text)
-    column_matches = column_pattern.findall(schema_text)
+    table_matches = create_table_pattern.findall(schema_text)
 
-    # Keep track of tables found in column definitions to avoid duplicating table docs
-    tables_from_columns = {col[0] for col in column_matches}
+    for table_match in table_matches:
+        full_table_name = table_match[0].strip()
+        # In case the table name is quoted or has schema info, we take the last part
+        simple_table_name = full_table_name.split('.')[-1].strip('[]"')
 
-    all_table_names = set(table_matches) | tables_from_columns
+        table_doc_content = f"[table: {simple_table_name}]"
+        documents.append(Document(page_content=table_doc_content, metadata={"type": "table", "table_name": simple_table_name}))
 
-    for table_name in all_table_names:
-        table_doc_content = f"[table: {table_name}]"
-        documents.append(Document(page_content=table_doc_content, metadata={"type": "table", "table_name": table_name}))
+        columns_text = table_match[1]
+        column_matches = column_pattern.findall(columns_text)
 
-    for table_name, col_name, col_type in column_matches:
-        col_doc_content = f"[table: {table_name}] [col: {col_name}] [type: {col_type}]"
-        documents.append(Document(page_content=col_doc_content, metadata={"type": "column", "table_name": table_name, "column_name": col_name}))
+        for col_match in column_matches:
+            col_name = col_match[0].strip()
+            col_type = col_match[1].strip()
 
-    print(f"Parsed {len(documents)} schema elements from text.")
+            # Skip constraint definitions that might be captured
+            if col_name.upper() in ["CONSTRAINT", "PRIMARY", "FOREIGN", "DEFAULT", "CHECK"]:
+                continue
+
+            col_doc_content = f"[table: {simple_table_name}] [col: {col_name}] [type: {col_type}]"
+            documents.append(Document(page_content=col_doc_content, metadata={"type": "column", "table_name": simple_table_name, "column_name": col_name}))
+
+    print(f"Parsed {len(documents)} schema elements from the provided SQL DDL text.")
     return documents
