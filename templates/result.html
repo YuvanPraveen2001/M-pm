@@ -75,4 +75,9 @@
         <a href="/">Ask another question</a>
     </div>
 </body>
+    <script>
+        // Pass Jinja results to JS and print in browser console
+        const result = {{ results|tojson|safe }};
+        console.log("Query Results:", result);
+    </script>
 </html>
