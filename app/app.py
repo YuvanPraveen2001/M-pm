@@ -89,7 +89,7 @@ Please correct the query based on this error.
 """
 
             template = f"""
-            Based on the table schema below, write a SQL query that would answer the user's question.
+            You are an expert T-SQL developer. Based on the table schema below, write a SQL query for Microsoft SQL Server that would answer the user's question.
             Pay attention to the user's question to determine the necessary tables and columns.
             Your response should only be the SQL query, without any explanation or markdown.
 
