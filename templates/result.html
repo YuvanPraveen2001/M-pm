@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Query Results</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 2em;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1em;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .query-details {
+            background-color: #eee;
+            padding: 1em;
+            border-radius: 5px;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Query Results</h1>
+        <div class="query-details">
+            <p><strong>Your Question:</strong> {{ query }}</p>
+            <p><strong>Generated SQL Query:</strong> <code>{{ sql_query }}</code></p>
+        </div>
+
+        {% if error %}
+            <p class="error">Error: {{ error }}</p>
+        {% elif results %}
+            <h2>Results</h2>
+            <table>
+                <thead>
+                    <tr>
+                        {% for header in results[0].keys() %}
+                            <th>{{ header }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in results %}
+                        <tr>
+                            {% for value in row %}
+                                <td>{{ value }}</td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No results found.</p>
+        {% endif %}
+
+        <br>
+        <a href="/">Ask another question</a>
+    </div>
+</body>
+</html>

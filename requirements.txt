@@ -1,0 +1,7 @@
+Flask
+SQLAlchemy
+langchain-community
+langchain-openai
+python-dotenv
+psycopg2-binary
+mysql-connector-python
