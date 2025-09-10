@@ -7,3 +7,4 @@ chromadb
 python-dotenv
 psycopg2-binary
 mysql-connector-python
+pyodbc
