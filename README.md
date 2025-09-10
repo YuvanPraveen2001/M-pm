@@ -1,14 +1,17 @@
-# Text-to-SQL Web Application
+# Text-to-SQL Web Application (RAG-based)
 
-This is a Python-based web application that allows you to query your SQL database using natural language. You provide your database credentials and ask a question like "show me all employees in the engineering department", and the application will generate the appropriate SQL query, execute it, and display the results.
+This is a Python-based web application that allows you to query your SQL database using natural language. It uses a Retrieval-Augmented Generation (RAG) architecture to provide accurate results even for complex database schemas.
+
+The application first indexes your database schema into a vector store. Then, when you ask a question, it retrieves the most relevant parts of the schema and uses a local language model to generate the correct SQL query.
 
 ## Features
 
--   **Natural Language to SQL**: Converts plain English questions into SQL queries.
+-   **RAG-based Text-to-SQL**: Uses a modern RAG architecture for high accuracy.
+-   **Local LLM Support**: Powered by local models running via Ollama (e.g., `phi3:mini`).
+-   **Advanced Embeddings**: Uses Nomic for high-quality schema embeddings.
+-   **Vector-based Schema Search**: Stores and searches your schema efficiently using ChromaDB.
 -   **Web-Based Interface**: Simple and intuitive HTML interface for interaction.
--   **Database Agnostic**: Uses SQLAlchemy to connect to a wide range of SQL databases (PostgreSQL, MySQL, SQLite, etc.).
--   **Schema-Aware**: Automatically inspects the database schema to generate accurate queries.
--   **Sample Database**: Includes a setup script to create a sample SQLite database for quick testing.
+-   **Database Agnostic**: Uses SQLAlchemy to connect to a wide range of SQL databases.
 
 ## Project Structure
 
@@ -19,9 +22,10 @@ This is a Python-based web application that allows you to query your SQL databas
 ├── templates/
 │   ├── index.html          # The main page with the query form
 │   └── result.html         # The page to display the results
-├── .env.example            # Example environment file for API keys
+├── .env.example            # Example environment file
 ├── requirements.txt        # Python dependencies
-├── setup_database.py       # Script to create the sample database
+├── setup_database.py       # Script to create a sample SQL database
+├── index_schema.py         # Script to index your database schema into ChromaDB
 └── README.md
 ```
 
@@ -30,7 +34,7 @@ This is a Python-based web application that allows you to query your SQL databas
 ### Prerequisites
 
 -   Python 3.7+
--   An OpenAI API key
+-   [Ollama](https://ollama.com/) installed and running.
 
 ### 1. Clone the Repository
 
@@ -46,39 +50,41 @@ It's recommended to create a virtual environment first.
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-```
-
-Then, install the required packages:
-
-```bash
 pip install -r requirements.txt
 ```
 
-### 3. Set Up Environment Variables
+### 3. Set Up Ollama
 
-The application requires an OpenAI API key to function.
+This application requires a running Ollama instance with the chat and embedding models pulled.
 
-1.  Make a copy of the example environment file:
+1.  Make sure your Ollama application is running.
+2.  Pull the required models from the command line:
     ```bash
-    cp .env.example .env
-    ```
-2.  Open the `.env` file and add your OpenAI API key:
-    ```
-    OPENAI_API_KEY="your_openai_api_key_here"
+    ollama pull phi3:mini
+    ollama pull nomic-embed-text
     ```
 
-## Usage
+## Usage (Two-Step Process)
 
-### 1. Create the Sample Database (Optional)
+This application uses a two-step process: first you index your database schema, then you can run the web application to ask questions.
 
-If you want to test the application with a sample database, run the setup script:
+### Step 1: Index Your Database Schema
 
-```bash
-python setup_database.py
-```
-This will create a `sample.db` file in the root directory.
+You must run the indexing script from your terminal to teach the application about your database.
 
-### 2. Run the Application
+-   **For the sample database:**
+    ```bash
+    python setup_database.py
+    python index_schema.py "sqlite:///sample.db"
+    ```
+-   **For your own database:**
+    ```bash
+    python index_schema.py "your_database_connection_uri"
+    ```
+
+This will create a `./chroma_db` directory containing the vector index of your schema. You only need to run this once, or whenever your database schema changes.
+
+### Step 2: Run the Web Application
 
 Start the Flask web server:
 
@@ -88,16 +94,18 @@ python app/app.py
 
 The application will be running at `http://127.0.0.1:5001`.
 
-### 3. Use the Web Interface
-
-1.  Open your web browser and navigate to `http://127.0.0.1:5001`.
-2.  In the "Database Connection URI" field, enter the connection string for your database. For the sample database, the default value `sqlite:///sample.db` is already provided.
-3.  In the "Your Question" field, type a question in natural language (e.g., "How many male employees are there?").
-4.  Click "Ask". The application will display the generated SQL query and the results from your database.
+1.  Open your web browser and navigate to the URL.
+2.  In the "Database Connection URI" field, enter the same connection string you used for indexing.
+3.  In the "Your Question" field, type a question in natural language.
+4.  Click "Ask". The application will display the generated SQL query and the results.
 
 ## Technologies Used
 
 -   **Backend**: Flask
 -   **Database ORM**: SQLAlchemy
--   **NL-to-SQL**: LangChain, OpenAI (GPT-3.5-turbo)
+-   **LLM Serving**: Ollama
+-   **Chat Model**: `phi3:mini`
+-   **Embedding Model**: `nomic-embed-text`
+-   **Vector Database**: ChromaDB
+-   **Core Framework**: LangChain
 -   **Frontend**: HTML, CSS
