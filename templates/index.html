@@ -29,11 +29,30 @@
             border: none;
             cursor: pointer;
         }
+        .info-box {
+            background-color: #e7f3fe;
+            border-left: 6px solid #2196F3;
+            padding: 1em;
+            margin-bottom: 2em;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Ask Your Database a Question</h1>
+
+        <div class="info-box">
+            <h4>Important: Two-Step Process</h4>
+            <p>This application uses a two-step process:</p>
+            <ol>
+                <li><strong>Index Your Database Schema:</strong> Before you can ask questions, you must first index your database's schema. Run the following command in your terminal:
+                    <br><code>python index_schema.py "your_database_uri"</code>
+                </li>
+                <li><strong>Ask a Question:</strong> Once your schema is indexed, you can use the form below to ask questions.</li>
+            </ol>
+            <p>Make sure your database URI matches the one you used for indexing. See the <a href="README.md" target="_blank">README</a> for more details.</p>
+        </div>
+
         <form action="/query" method="post">
             <label for="db_uri">Database Connection URI</label>
             <input type="text" id="db_uri" name="db_uri" value="sqlite:///sample.db" required>

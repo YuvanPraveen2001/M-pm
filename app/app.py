@@ -1,13 +1,22 @@
 import os
 from flask import Flask, render_template, request
 from sqlalchemy import create_engine, text
-from langchain_community.utilities import SQLDatabase
-from langchain_openai import ChatOpenAI
-from langchain.chains import create_sql_query_chain
+from langchain_community.vectorstores import Chroma
+from langchain_community.embeddings import OllamaEmbeddings
+from langchain_community.chat_models import ChatOllama
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.output_parsers import StrOutputParser
 
-# It's a good practice to use environment variables for sensitive data like API keys
+# It's a good practice to use a .env file for configuration
 from dotenv import load_dotenv
 load_dotenv()
+
+# Constants
+CHROMA_DB_PATH = "./chroma_db"
+COLLECTION_NAME = "documents"
+EMBED_MODEL = "nomic-embed-text"
+CHAT_MODEL = "phi3:mini"
 
 app = Flask(__name__, template_folder='../templates')
 
@@ -23,26 +32,46 @@ def query():
     if not db_uri or not natural_language_query:
         return render_template('result.html', error="Database URI and query are required.")
 
-    # Check for API key before proceeding
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key or api_key == "your_openai_api_key_here" or api_key == "dummy_key":
-         return render_template('result.html',
+    if not os.path.exists(CHROMA_DB_PATH):
+        return render_template('result.html',
                                query=natural_language_query,
-                               sql_query="Not attempted.",
-                               error="OPENAI_API_KEY is not set or is a placeholder. Please set a valid key in the .env file.")
+                               error=f"ChromaDB index not found at '{CHROMA_DB_PATH}'. Please run the indexing script first: `python index_schema.py \"{db_uri}\"`")
 
     sql_query = ""
     try:
-        # Lazy load the LLM and chain inside the request
-        llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0, api_key=api_key)
-        db = SQLDatabase.from_uri(db_uri)
+        embeddings = OllamaEmbeddings(model=EMBED_MODEL)
+        vector_store = Chroma(
+            persist_directory=CHROMA_DB_PATH,
+            embedding_function=embeddings,
+            collection_name=COLLECTION_NAME
+        )
+        retriever = vector_store.as_retriever()
+        llm = ChatOllama(model=CHAT_MODEL)
 
-        chain = create_sql_query_chain(llm, db)
-        sql_query = chain.invoke({"question": natural_language_query})
+        template = """
+        Based on the table schema below, write a SQL query that would answer the user's question.
+        Pay attention to the user's question to determine the necessary tables and columns.
+        Your response should only be the SQL query, without any explanation or markdown.
 
-        # Clean up the generated query from markdown
-        if "```sql" in sql_query:
-            sql_query = sql_query.split("```sql")[1].split("```")[0].strip()
+        Schema:
+        {context}
+
+        Question: {question}
+
+        SQL Query:
+        """
+        prompt = ChatPromptTemplate.from_template(template)
+
+        rag_chain = (
+            {"context": retriever, "question": RunnablePassthrough()}
+            | prompt
+            | llm
+            | StrOutputParser()
+        )
+
+        print("Generating SQL query...")
+        sql_query = rag_chain.invoke(natural_language_query)
+        print(f"Generated SQL: {sql_query}")
 
         engine = create_engine(db_uri)
         with engine.connect() as connection:
@@ -56,11 +85,14 @@ def query():
                                results=results_as_dicts)
 
     except Exception as e:
+        error_message = str(e)
+        if "Connection refused" in error_message:
+            error_message = "Could not connect to Ollama. Please make sure Ollama is running and the specified models are available."
+
         return render_template('result.html',
                                query=natural_language_query,
                                sql_query=sql_query if sql_query else "Error generating SQL.",
-                               error=str(e))
+                               error=error_message)
 
 if __name__ == '__main__':
-    # The check for OPENAI_API_KEY is now inside the /query route.
     app.run(debug=True, port=5001)

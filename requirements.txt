@@ -1,7 +1,9 @@
 Flask
 SQLAlchemy
 langchain-community
-langchain-openai
+langchain-ollama
+langchain-nomic
+chromadb
 python-dotenv
 psycopg2-binary
 mysql-connector-python
