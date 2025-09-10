@@ -7,6 +7,7 @@ from langchain_community.chat_models import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+from app.schema_utils import get_schema_documents_from_text
 
 # It's a good practice to use a .env file for configuration
 from dotenv import load_dotenv
@@ -20,6 +21,34 @@ CHAT_MODEL = "phi3:mini"
 
 app = Flask(__name__, template_folder='../templates')
 
+def get_vector_store_retriever(embeddings, db_uri, schema_text=None):
+    """
+    Creates a retriever from either a user-provided schema text or a persisted ChromaDB index.
+    """
+    if schema_text and schema_text.strip():
+        print("Creating in-memory vector store from provided schema text.")
+        # Create documents from the schema text using the utility function
+        schema_docs = get_schema_documents_from_text(schema_text)
+        # Create an in-memory vector store
+        vector_store = Chroma.from_documents(
+            documents=schema_docs,
+            embedding=embeddings,
+            collection_name="temp_collection"  # Use a temporary collection name
+        )
+    else:
+        print(f"Loading persisted vector store from: {CHROMA_DB_PATH}")
+        # Check if the persisted ChromaDB directory exists
+        if not os.path.exists(CHROMA_DB_PATH):
+            raise FileNotFoundError(f"ChromaDB index not found at '{CHROMA_DB_PATH}'. Please run the indexing script first: `python index_schema.py \"{db_uri}\"`")
+        # Load the persisted vector store
+        vector_store = Chroma(
+            persist_directory=CHROMA_DB_PATH,
+            embedding_function=embeddings,
+            collection_name=COLLECTION_NAME
+        )
+
+    return vector_store.as_retriever()
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -28,24 +57,18 @@ def index():
 def query():
     db_uri = request.form.get('db_uri')
     natural_language_query = request.form.get('query')
+    schema_text = request.form.get('schema_text') # New field
 
     if not db_uri or not natural_language_query:
         return render_template('result.html', error="Database URI and query are required.")
 
-    if not os.path.exists(CHROMA_DB_PATH):
-        return render_template('result.html',
-                               query=natural_language_query,
-                               error=f"ChromaDB index not found at '{CHROMA_DB_PATH}'. Please run the indexing script first: `python index_schema.py \"{db_uri}\"`")
-
     sql_query = ""
     try:
         embeddings = OllamaEmbeddings(model=EMBED_MODEL)
-        vector_store = Chroma(
-            persist_directory=CHROMA_DB_PATH,
-            embedding_function=embeddings,
-            collection_name=COLLECTION_NAME
-        )
-        retriever = vector_store.as_retriever()
+
+        # Get the retriever based on whether schema_text is provided
+        retriever = get_vector_store_retriever(embeddings, db_uri, schema_text)
+
         llm = ChatOllama(model=CHAT_MODEL)
 
         template = """
