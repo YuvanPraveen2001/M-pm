@@ -73,6 +73,12 @@ def query():
         sql_query = rag_chain.invoke(natural_language_query)
         print(f"Generated SQL: {sql_query}")
 
+        # Clean up the generated query from markdown, if present
+        if "```sql" in sql_query:
+            sql_query = sql_query.split("```sql")[1].split("```")[0].strip()
+        elif "```" in sql_query:
+            sql_query = sql_query.split("```")[1].split("```")[0].strip()
+
         engine = create_engine(db_uri)
         with engine.connect() as connection:
             results = connection.execute(text(sql_query)).mappings().all()
