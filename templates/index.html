@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text-to-SQL Query</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 2em;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5em;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 0.5em;
+            margin-bottom: 1em;
+        }
+        button {
+            padding: 0.7em 1.5em;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ask Your Database a Question</h1>
+        <form action="/query" method="post">
+            <label for="db_uri">Database Connection URI</label>
+            <input type="text" id="db_uri" name="db_uri" value="sqlite:///sample.db" required>
+            <p><i>Example for SQLite: <code>sqlite:///sample.db</code><br>
+               Example for PostgreSQL: <code>postgresql://user:password@host:port/dbname</code></i></p>
+
+            <label for="query">Your Question</label>
+            <textarea id="query" name="query" rows="4" required></textarea>
+
+            <button type="submit">Ask</button>
+        </form>
+    </div>
+</body>
+</html>
