@@ -56,6 +56,11 @@ def index():
 @app.route('/query', methods=['POST'])
 def query():
     db_uri = request.form.get('db_uri')
+    # Automatically correct common SQL Server connection string issue
+    if db_uri and db_uri.startswith('sqlserver://'):
+        db_uri = db_uri.replace('sqlserver://', 'mssql+pyodbc://', 1)
+        print(f"Corrected DB URI to: {db_uri}")
+
     natural_language_query = request.form.get('query')
     schema_text = request.form.get('schema_text')
     model_choice = request.form.get('model_choice', 'local') # Default to local
