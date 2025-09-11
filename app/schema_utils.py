@@ -36,7 +36,6 @@ def get_schema_documents_from_text(schema_text: str):
     create_table_pattern = re.compile(r"CREATE TABLE (.*?)\s*\((.*?)\);", re.DOTALL | re.IGNORECASE)
 
     # Regex to find column definitions within a CREATE TABLE statement
-    # This is a simplified regex; it assumes column names are valid identifiers and types don't contain parentheses
     column_pattern = re.compile(r"^\s*(\w+)\s+([\w\(\)]+)", re.MULTILINE)
 
     table_matches = create_table_pattern.findall(schema_text)
@@ -56,7 +55,6 @@ def get_schema_documents_from_text(schema_text: str):
             col_name = col_match[0].strip()
             col_type = col_match[1].strip()
 
-            # Skip constraint definitions that might be captured
             if col_name.upper() in ["CONSTRAINT", "PRIMARY", "FOREIGN", "DEFAULT", "CHECK"]:
                 continue
 

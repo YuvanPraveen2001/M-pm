@@ -43,23 +43,21 @@
 
         <div class="info-box">
             <h4>How to Use This Application</h4>
-            <p>You have two options for providing the database schema:</p>
-            <ol>
-                <li>
-                    <strong>(Option A) Pre-index your database:</strong>
-                    Run this command once to teach the application your schema:
-                    <br><code>python index_schema.py "your_database_uri"</code><br>
-                    Then, just fill in the "Database Connection URI" and "Your Question" fields below.
-                </li>
-                <li>
-                    <strong>(Option B) Paste your schema directly:</strong>
-                    If you have a large number of tables, you can paste just the relevant schema information into the "Manual Schema Definition" box below.
-                </li>
-            </ol>
+            <p>You can choose between two models for generating SQL queries. For either model, you can optionally provide a manual schema to improve accuracy.</p>
+            <ul>
+                <li><strong>Local Model:</strong> Uses a model running on your machine via Ollama. This requires you to first index your database by running:<br><code>python index_schema.py "your_database_uri"</code></li>
+                <li><strong>External API:</strong> Uses a remote API to generate the query. Does not require pre-indexing.</li>
+            </ul>
             <p>See the <a href="README.md" target="_blank">README</a> for more details.</p>
         </div>
 
         <form action="/query" method="post">
+            <label for="model_choice">Choose a Model</label>
+            <select name="model_choice" id="model_choice" style="width: 100%; padding: 0.5em; margin-bottom: 1em;">
+                <option value="local">Local Model (Ollama)</option>
+                <option value="external">External API</option>
+            </select>
+
             <label for="db_uri">Database Connection URI</label>
             <input type="text" id="db_uri" name="db_uri" value="sqlite:///sample.db" required>
             <p><i>Example for SQLite: <code>sqlite:///sample.db</code><br>
@@ -71,17 +69,7 @@
             <hr style="margin: 2em 0;">
 
             <label for="schema_text">Manual Schema Definition (Optional)</label>
-            <textarea id="schema_text" name="schema_text" rows="10" placeholder="If you have a large schema, paste only the relevant tables and columns here. Leave blank to use the pre-indexed schema."></textarea>
-            <p><i>The schema should be in a specific format, with each table and column on a new line. For example:
-<pre>
-[table: users]
-[table: users] [col: id] [type: INTEGER]
-[table: users] [col: name] [type: VARCHAR]
-[table: products]
-[table: products] [col: product_id] [type: INTEGER]
-</pre>
-            </i></p>
-
+            <textarea id="schema_text" name="schema_text" rows="10" placeholder="To improve accuracy, paste relevant CREATE TABLE statements here. This works for both Local and External models."></textarea>
 
             <button type="submit">Ask</button>
         </form>
