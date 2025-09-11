@@ -43,14 +43,21 @@
 
         <div class="info-box">
             <h4>How to Use This Application</h4>
-            <p>
-                To get the most accurate results, especially for complex databases, you can provide the relevant table definitions in the "Manual Schema Definition" box below.
-                This helps the AI focus on only the tables and columns needed to answer your question.
-            </p>
+            <p>You can choose between two models for generating SQL queries. For either model, you can optionally provide a manual schema to improve accuracy.</p>
+            <ul>
+                <li><strong>Local Model:</strong> Uses a model running on your machine via Ollama. This requires you to first index your database by running:<br><code>python index_schema.py "your_database_uri"</code></li>
+                <li><strong>External API:</strong> Uses a remote API to generate the query. Does not require pre-indexing.</li>
+            </ul>
             <p>See the <a href="README.md" target="_blank">README</a> for more details.</p>
         </div>
 
         <form action="/query" method="post">
+            <label for="model_choice">Choose a Model</label>
+            <select name="model_choice" id="model_choice" style="width: 100%; padding: 0.5em; margin-bottom: 1em;">
+                <option value="local">Local Model (Ollama)</option>
+                <option value="external">External API</option>
+            </select>
+
             <label for="db_uri">Database Connection URI</label>
             <input type="text" id="db_uri" name="db_uri" value="sqlite:///sample.db" required>
             <p><i>Example for SQLite: <code>sqlite:///sample.db</code><br>
@@ -62,25 +69,7 @@
             <hr style="margin: 2em 0;">
 
             <label for="schema_text">Manual Schema Definition (Optional)</label>
-            <textarea id="schema_text" name="schema_text" rows="10" placeholder="Paste the relevant schema information here, using CREATE TABLE statements."></textarea>
-            <p><i>Pasting `CREATE TABLE` statements here helps the AI understand your database structure. For example:
-<pre>
-CREATE TABLE Employee (
-    EmployeeId int NOT NULL,
-    LastName varchar(250) NULL,
-    FirstName varchar(250) NULL,
-    ...
-);
-
-CREATE TABLE Appointment (
-    AppointmentId int NOT NULL,
-    PatientId int NOT NULL,
-    EmployeeId int NOT NULL,
-    ...
-);
-</pre>
-            </i></p>
-
+            <textarea id="schema_text" name="schema_text" rows="10" placeholder="To improve accuracy, paste relevant CREATE TABLE statements here. This works for both Local and External models."></textarea>
 
             <button type="submit">Ask</button>
         </form>
