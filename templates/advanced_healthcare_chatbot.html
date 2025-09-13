@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Healthcare Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .chat-container {
+            height: calc(100vh - 200px);
+        }
+        .typing-indicator {
+            opacity: 0;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+        .message-enter {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .suggestion-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div x-data="healthcareChatbot()" class="flex flex-col h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-lg border-b-4 border-blue-500">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="bg-blue-500 p-3 rounded-full">
+                            <i class="fas fa-user-md text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900">Advanced Healthcare Assistant</h1>
+                            <p class="text-sm text-gray-600">AI-Powered Appointment Booking with RAG Technology</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2" x-show="systemStatus">
+                            <div class="w-3 h-3 rounded-full" :class="systemStatus?.status === 'healthy' ? 'bg-green-500' : 'bg-yellow-500'"></div>
+                            <span class="text-sm text-gray-600" x-text="systemStatus?.status || 'Loading...'"></span>
+                        </div>
+                        <button @click="showSessionInfo = !showSessionInfo" class="bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg text-sm">
+                            <i class="fas fa-info-circle"></i> Session Info
+                        </button>
+                        <a href="/admin" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">
+                            <i class="fas fa-cog"></i> Admin
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex max-w-7xl mx-auto w-full">
+            <!-- Chat Area -->
+            <div class="flex-1 flex flex-col bg-white m-4 rounded-xl shadow-lg overflow-hidden">
+                <!-- Chat Messages -->
+                <div class="flex-1 overflow-y-auto p-6 space-y-4 chat-container" x-ref="chatContainer">
+                    <!-- Welcome Message -->
+                    <div class="flex items-start space-x-3 message-enter">
+                        <div class="bg-blue-500 p-2 rounded-full flex-shrink-0">
+                            <i class="fas fa-robot text-white text-sm"></i>
+                        </div>
+                        <div class="bg-blue-50 p-4 rounded-lg rounded-tl-none max-w-lg">
+                            <p class="text-gray-800">👋 Welcome! I'm your advanced healthcare appointment assistant with RAG-enhanced intelligence. I can help you:</p>
+                            <ul class="mt-2 text-sm text-gray-600 space-y-1">
+                                <li>📅 Book appointments with therapists using natural language</li>
+                                <li>🔍 Find therapists by location, specialty, language, or other criteria</li>
+                                <li>⏰ Check real-time therapist availability</li>
+                                <li>📋 View and manage your appointment history</li>
+                                <li>🧠 Get intelligent suggestions based on your preferences</li>
+                            </ul>
+                            <p class="mt-3 text-sm text-blue-600 font-medium">Try saying something like: "Find a female Spanish-speaking therapist for anxiety treatment in my area"</p>
+                        </div>
+                    </div>
+
+                    <!-- Chat Messages -->
+                    <template x-for="message in messages" :key="message.id">
+                        <div class="flex items-start space-x-3 message-enter" :class="message.isUser ? 'flex-row-reverse space-x-reverse' : ''">
+                            <div class="flex-shrink-0 p-2 rounded-full" :class="message.isUser ? 'bg-green-500' : 'bg-blue-500'">
+                                <i :class="message.isUser ? 'fas fa-user text-white text-sm' : 'fas fa-robot text-white text-sm'"></i>
+                            </div>
+                            <div class="max-w-lg p-4 rounded-lg" 
+                                 :class="message.isUser ? 'bg-green-50 rounded-tr-none' : 'bg-blue-50 rounded-tl-none'">
+                                <p class="text-gray-800" x-text="message.content"></p>
+                                
+                                <!-- Data Display -->
+                                <div x-show="message.data && message.data.length > 0" class="mt-3">
+                                    <div class="bg-white p-3 rounded border">
+                                        <template x-for="item in message.data?.slice(0, 5)" :key="item">
+                                            <div class="text-sm border-b border-gray-100 py-2 last:border-b-0">
+                                                <template x-if="message.tool_executed === 'book_appointment'">
+                                                    <div class="bg-green-50 p-2 rounded">
+                                                        <strong>✅ Appointment Booked Successfully!</strong><br>
+                                                        📅 Date: <span x-text="item.appointment_date"></span><br>
+                                                        🕐 Time: <span x-text="item.appointment_time"></span><br>
+                                                        ⏱️ Duration: <span x-text="item.duration"></span> minutes<br>
+                                                        👤 Patient ID: <span x-text="item.patient_id"></span><br>
+                                                        👨‍⚕️ Therapist ID: <span x-text="item.employee_id"></span>
+                                                    </div>
+                                                </template>
+                                                <template x-if="message.tool_executed === 'check_availability'">
+                                                    <div>
+                                                        <strong x-text="item.FirstName + ' ' + item.LastName"></strong><br>
+                                                        🕐 Available: <span x-text="item.AvailableFrom + ' - ' + item.AvailableTo"></span><br>
+                                                        📅 Day: <span x-text="item.WeekDay"></span>
+                                                    </div>
+                                                </template>
+                                                <template x-if="message.tool_executed?.includes('find') || message.tool_executed?.includes('suggest')">
+                                                    <div>
+                                                        <strong x-text="item.FirstName + ' ' + item.LastName"></strong><br>
+                                                        🎓 <span x-text="item.TreatmentTypeDesc || item.HighestDegree"></span><br>
+                                                        📧 <span x-text="item.Email || ''"></span><br>
+                                                        📍 <span x-text="item.ZoneName || item.ServiceAreaZip || ''"></span>
+                                                    </div>
+                                                </template>
+                                                <template x-if="message.tool_executed === 'get_patient_appointments'">
+                                                    <div>
+                                                        <strong x-text="item.TherapistName"></strong><br>
+                                                        📅 Date: <span x-text="new Date(item.ScheduledDate).toLocaleDateString()"></span><br>
+                                                        🏥 Service: <span x-text="item.ServiceTypeDesc"></span><br>
+                                                        📊 Status: <span x-text="item.AppointmentStatusDesc"></span><br>
+                                                        📍 Location: <span x-text="item.LocationName"></span>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </template>
+                                        <div x-show="message.data?.length > 5" class="text-xs text-gray-500 mt-2">
+                                            📊 And <span x-text="message.data.length - 5"></span> more results available...
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Suggestions -->
+                                <div x-show="message.suggestions && message.suggestions.length > 0" class="mt-3">
+                                    <p class="text-xs text-gray-500 mb-2">💡 Smart Suggestions:</p>
+                                    <div class="flex flex-wrap gap-2">
+                                        <template x-for="suggestion in message.suggestions.slice(0, 4)">
+                                            <button @click="sendMessage(suggestion)" 
+                                                    class="suggestion-button bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-full text-xs transition-all duration-200">
+                                                <span x-text="suggestion"></span>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+                                
+                                <!-- Missing Parameters -->
+                                <div x-show="message.missing_parameters && message.missing_parameters.length > 0" class="mt-3">
+                                    <p class="text-xs text-orange-500 mb-1">📝 Still needed:</p>
+                                    <div class="text-xs text-orange-600 bg-orange-50 p-2 rounded">
+                                        <span x-text="message.missing_parameters.join(', ')"></span>
+                                    </div>
+                                </div>
+
+                                <!-- Knowledge Context Debug Info -->
+                                <div x-show="message.knowledge_context && message.knowledge_context.length > 0 && showDebugInfo" class="mt-2 text-xs text-gray-400">
+                                    🧠 Knowledge used: 
+                                    <template x-for="ctx in message.knowledge_context">
+                                        <span class="bg-gray-100 px-1 rounded mr-1" x-text="ctx.type + ' (' + ctx.score.toFixed(3) + ')'"></span>
+                                    </template>
+                                </div>
+
+                                <div class="text-xs text-gray-400 mt-2" x-text="new Date(message.timestamp).toLocaleTimeString()"></div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Typing Indicator -->
+                    <div x-show="isTyping" class="flex items-start space-x-3">
+                        <div class="bg-blue-500 p-2 rounded-full flex-shrink-0">
+                            <i class="fas fa-robot text-white text-sm"></i>
+                        </div>
+                        <div class="bg-blue-50 p-4 rounded-lg rounded-tl-none">
+                            <div class="flex space-x-1">
+                                <div class="w-2 h-2 bg-blue-400 rounded-full typing-indicator"></div>
+                                <div class="w-2 h-2 bg-blue-400 rounded-full typing-indicator" style="animation-delay: 0.2s"></div>
+                                <div class="w-2 h-2 bg-blue-400 rounded-full typing-indicator" style="animation-delay: 0.4s"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Message Input -->
+                <div class="border-t bg-gray-50 p-4">
+                    <form @submit.prevent="sendMessage(currentMessage)" class="flex space-x-3">
+                        <div class="flex-1 relative">
+                            <input 
+                                type="text" 
+                                x-model="currentMessage"
+                                placeholder="Ask me anything about healthcare appointments... (e.g., 'Book appointment with Dr. Smith tomorrow at 2 PM')"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                :disabled="isTyping"
+                            >
+                            <div class="absolute right-3 top-3 text-gray-400">
+                                <i class="fas fa-microphone text-sm cursor-pointer hover:text-blue-500" title="Voice input (coming soon)"></i>
+                            </div>
+                        </div>
+                        <button 
+                            type="submit"
+                            :disabled="!currentMessage.trim() || isTyping"
+                            class="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white px-6 py-3 rounded-lg transition-colors flex items-center space-x-2"
+                        >
+                            <i class="fas fa-paper-plane" x-show="!isTyping"></i>
+                            <i class="fas fa-spinner fa-spin" x-show="isTyping"></i>
+                            <span x-text="isTyping ? 'Thinking...' : 'Send'"></span>
+                        </button>
+                    </form>
+                    
+                    <!-- Quick Actions -->
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <button @click="sendMessage('Check availability of John this Wednesday')" 
+                                class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm">
+                            🗓️ Check Availability
+                        </button>
+                        <button @click="sendMessage('Find female therapist who speaks Spanish in my area')" 
+                                class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm">
+                            🔍 Find Therapist
+                        </button>
+                        <button @click="sendMessage('Book an appointment for anxiety treatment next week')" 
+                                class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm">
+                            📅 Book Appointment
+                        </button>
+                        <button @click="sendMessage('Show my upcoming appointments')" 
+                                class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm">
+                            📋 My Appointments
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="w-80 bg-white m-4 ml-0 rounded-xl shadow-lg overflow-hidden">
+                <!-- Session Info Panel -->
+                <div x-show="showSessionInfo" class="p-4 border-b">
+                    <h3 class="font-semibold text-gray-800 mb-3">📊 Session Information</h3>
+                    <div class="space-y-2 text-sm">
+                        <div x-show="sessionSummary">
+                            <strong>🎯 Current Intent:</strong> 
+                            <span class="bg-blue-100 px-2 py-1 rounded text-xs" x-text="sessionSummary?.current_intent || 'None'"></span>
+                        </div>
+                        <div x-show="sessionSummary">
+                            <strong>🛠️ Selected Tool:</strong> 
+                            <span class="bg-green-100 px-2 py-1 rounded text-xs" x-text="sessionSummary?.selected_tool || 'None'"></span>
+                        </div>
+                        <div x-show="sessionSummary?.collected_parameters && Object.keys(sessionSummary.collected_parameters).length > 0">
+                            <strong>📝 Collected Parameters:</strong>
+                            <div class="bg-gray-50 p-2 rounded mt-1 text-xs">
+                                <template x-for="[key, value] in Object.entries(sessionSummary?.collected_parameters || {})">
+                                    <div class="flex justify-between">
+                                        <span class="font-medium" x-text="key"></span>: 
+                                        <span x-text="value"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            RAG Available: <span :class="sessionSummary?.rag_available ? 'text-green-600' : 'text-red-600'" x-text="sessionSummary?.rag_available ? '✅' : '❌'"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Help Section -->
+                <div class="p-4">
+                    <h3 class="font-semibold text-gray-800 mb-3">🆘 How to Use</h3>
+                    <div class="space-y-3 text-sm text-gray-600">
+                        <div class="bg-blue-50 p-3 rounded">
+                            <h4 class="font-medium text-blue-800">📅 Booking Appointments</h4>
+                            <p class="mt-1">Say: "Book appointment with Dr. Smith tomorrow at 2 PM for patient ID 123"</p>
+                        </div>
+                        <div class="bg-green-50 p-3 rounded">
+                            <h4 class="font-medium text-green-800">🔍 Finding Therapists</h4>
+                            <p class="mt-1">Say: "Find female therapist who speaks Spanish and specializes in anxiety"</p>
+                        </div>
+                        <div class="bg-purple-50 p-3 rounded">
+                            <h4 class="font-medium text-purple-800">⏰ Checking Availability</h4>
+                            <p class="mt-1">Say: "What's John's availability this week?" or "Who's available Wednesday afternoon?"</p>
+                        </div>
+                        <div class="bg-orange-50 p-3 rounded">
+                            <h4 class="font-medium text-orange-800">🧠 Smart Features</h4>
+                            <p class="mt-1">The system uses RAG technology to understand context and provide intelligent suggestions!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Status -->
+                <div class="p-4 border-t">
+                    <h3 class="font-semibold text-gray-800 mb-3">🚦 System Status</h3>
+                    <div class="space-y-2 text-sm" x-show="systemStatus">
+                        <div class="flex justify-between">
+                            <span>🤖 Chatbot:</span>
+                            <span :class="systemStatus?.components?.chatbot ? 'text-green-600' : 'text-red-600'">
+                                <i :class="systemStatus?.components?.chatbot ? 'fas fa-check' : 'fas fa-times'"></i>
+                            </span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>🗄️ Database:</span>
+                            <span :class="systemStatus?.components?.database ? 'text-green-600' : 'text-red-600'">
+                                <i :class="systemStatus?.components?.database ? 'fas fa-check' : 'fas fa-times'"></i>
+                            </span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>🧠 RAG System:</span>
+                            <span :class="systemStatus?.components?.rag_system ? 'text-green-600' : 'text-red-600'">
+                                <i :class="systemStatus?.components?.rag_system ? 'fas fa-check' : 'fas fa-times'"></i>
+                            </span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>🔤 Embeddings:</span>
+                            <span :class="systemStatus?.components?.embeddings ? 'text-green-600' : 'text-red-600'">
+                                <i :class="systemStatus?.components?.embeddings ? 'fas fa-check' : 'fas fa-times'"></i>
+                            </span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>🛠️ Tool Executor:</span>
+                            <span :class="systemStatus?.components?.tool_executor ? 'text-green-600' : 'text-red-600'">
+                                <i :class="systemStatus?.components?.tool_executor ? 'fas fa-check' : 'fas fa-times'"></i>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-xs text-gray-500">
+                        Last updated: <span x-text="systemStatus ? new Date(systemStatus.timestamp).toLocaleTimeString() : 'Never'"></span>
+                    </div>
+                </div>
+
+                <!-- Debug Controls -->
+                <div class="p-4 border-t">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium">🐛 Debug Mode</span>
+                        <button @click="showDebugInfo = !showDebugInfo" 
+                                class="bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-xs">
+                            <i :class="showDebugInfo ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                        </button>
+                    </div>
+                    <div x-show="showDebugInfo" class="mt-2 text-xs text-gray-500">
+                        Debug mode shows RAG knowledge context for each response.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="bg-white border-t p-4">
+            <div class="max-w-7xl mx-auto flex justify-between items-center text-sm text-gray-600">
+                <div>
+                    🏥 Advanced Healthcare Chatbot v3.0 - Powered by AI, RAG & Natural Language Processing
+                </div>
+                <div class="flex space-x-4">
+                    <button @click="provideFeedback(true)" class="text-green-600 hover:text-green-700 transition-colors">
+                        <i class="fas fa-thumbs-up"></i> Helpful
+                    </button>
+                    <button @click="provideFeedback(false)" class="text-red-600 hover:text-red-700 transition-colors">
+                        <i class="fas fa-thumbs-down"></i> Not Helpful
+                    </button>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        function healthcareChatbot() {
+            return {
+                messages: [],
+                currentMessage: '',
+                isTyping: false,
+                showSessionInfo: false,
+                showDebugInfo: false,
+                sessionSummary: null,
+                systemStatus: null,
+                
+                init() {
+                    this.checkSystemHealth();
+                    this.updateSessionSummary();
+                    // Auto-update session summary every 10 seconds
+                    setInterval(() => this.updateSessionSummary(), 10000);
+                    // Auto-refresh system health every 30 seconds
+                    setInterval(() => this.checkSystemHealth(), 30000);
+                },
+                
+                async sendMessage(message) {
+                    if (!message?.trim()) return;
+                    
+                    this.currentMessage = '';
+                    this.isTyping = true;
+                    
+                    // Add user message
+                    this.addMessage(message, true);
+                    
+                    try {
+                        const response = await fetch('/api/chat', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ message: message })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        // Add assistant response
+                        this.addMessage(
+                            data.response || data.message || 'No response received',
+                            false,
+                            data
+                        );
+                        
+                        // Update session summary
+                        this.updateSessionSummary();
+                        
+                    } catch (error) {
+                        console.error('Error:', error);
+                        this.addMessage('🚨 Sorry, I encountered an error. Please try again or check your connection.', false);
+                    } finally {
+                        this.isTyping = false;
+                        this.scrollToBottom();
+                    }
+                },
+                
+                addMessage(content, isUser, data = null) {
+                    this.messages.push({
+                        id: Date.now() + Math.random(),
+                        content: content,
+                        isUser: isUser,
+                        timestamp: new Date(),
+                        data: data?.data,
+                        suggestions: data?.suggestions,
+                        missing_parameters: data?.missing_parameters,
+                        knowledge_context: data?.knowledge_context,
+                        tool_executed: data?.tool_executed
+                    });
+                    this.$nextTick(() => this.scrollToBottom());
+                },
+                
+                scrollToBottom() {
+                    const container = this.$refs.chatContainer;
+                    if (container) {
+                        container.scrollTop = container.scrollHeight;
+                    }
+                },
+                
+                async updateSessionSummary() {
+                    try {
+                        const response = await fetch('/api/session_summary');
+                        const data = await response.json();
+                        this.sessionSummary = data;
+                    } catch (error) {
+                        console.error('Error updating session summary:', error);
+                    }
+                },
+                
+                async checkSystemHealth() {
+                    try {
+                        const response = await fetch('/health');
+                        const data = await response.json();
+                        this.systemStatus = data;
+                    } catch (error) {
+                        console.error('Error checking system health:', error);
+                        this.systemStatus = {
+                            status: 'unhealthy',
+                            components: {
+                                chatbot: false,
+                                database: false,
+                                rag_system: false,
+                                embeddings: false,
+                                tool_executor: false
+                            }
+                        };
+                    }
+                },
+                
+                async provideFeedback(helpful) {
+                    try {
+                        const response = await fetch('/api/feedback', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ helpful: helpful })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.status === 'success') {
+                            this.addMessage(
+                                helpful ? 
+                                '🙏 Thank you for the positive feedback! This helps me improve.' : 
+                                '😔 Thank you for the feedback. I\'ll learn from this to provide better assistance.',
+                                false
+                            );
+                        }
+                    } catch (error) {
+                        console.error('Error providing feedback:', error);
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

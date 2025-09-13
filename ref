@@ -1,0 +1,21 @@
+postgresql://xtuser:xtpass@103.174.10.6:5432/test_db
+sqlserver://mpmadminnew:nNluGu2NLnGk88lg8LW@20.235.240.93:1433/AIStagingDB_20250811
+get me the list of actors
+get me the list of top 10 movies with highest length and. rental rate
+
+need a list of available employees on sep 10 2025
+
+With the given schema I need to generate a sql query for user request base on 
+Identify the employee(s) who should be considered for availability within 30days of range. Match by SiteId, GenderType, EmployeeId, and ZipCode. Narrow down the result set to only the employees that satisfy all the given criteria. In the EmployeeAvailabilityDateTime table the week days are specified as [1,2...7].
+
+user request : need a list of available employees on this wednesday.
+meta : {
+gender: Male,
+SiteId: 2,
+today's date:2025-09-08
+}
+
+
+/Users/xyloite/workspace/M-pm/venv/bin/python app/healthcare_chatbot_app.py
+
+

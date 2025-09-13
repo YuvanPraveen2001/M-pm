@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schema Management Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2rem;
+        }
+        .content {
+            padding: 20px;
+        }
+        .status-card {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .tables-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .table-card {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            background: white;
+            transition: all 0.3s ease;
+        }
+        .table-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        .table-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #495057;
+            margin-bottom: 10px;
+        }
+        .table-stats {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        .table-stats span {
+            display: inline-block;
+            margin-right: 15px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.1rem;
+            color: #6c757d;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: black;
+        }
+        .column-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        .column-item {
+            padding: 5px 0;
+            border-bottom: 1px solid #f8f9fa;
+        }
+        .column-item:last-child {
+            border-bottom: none;
+        }
+        .column-name {
+            font-weight: bold;
+            color: #495057;
+        }
+        .column-type {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        .navigation {
+            margin-bottom: 20px;
+        }
+        .nav-link {
+            color: #007bff;
+            text-decoration: none;
+            margin-right: 20px;
+        }
+        .nav-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗄️ Database Schema Management</h1>
+            <p>Real-time schema monitoring and vector database management</p>
+        </div>
+        
+        <div class="content">
+            <div class="navigation">
+                <a href="/" class="nav-link">← Back to Chatbot</a>
+                <a href="/admin" class="nav-link">Admin Dashboard</a>
+            </div>
+
+            <div id="status-section">
+                <div class="status-card">
+                    <h3>📊 Schema Status</h3>
+                    <div id="schema-status">Loading...</div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-primary" onclick="checkSchemaChanges()">
+                    🔍 Check for Changes
+                </button>
+                <button class="btn btn-warning" onclick="forceSchemaUpdate()">
+                    🔄 Force Update
+                </button>
+                <button class="btn btn-success" onclick="refreshStatus()">
+                    ♻️ Refresh Status
+                </button>
+                <button class="btn btn-primary" onclick="showAllTables()">
+                    📋 View All Tables
+                </button>
+            </div>
+
+            <div id="message-area"></div>
+
+            <div id="tables-section">
+                <h3>📊 Database Tables</h3>
+                <div id="tables-grid" class="tables-grid">
+                    <div class="loading">Loading tables...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table Details Modal -->
+    <div id="tableModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="table-details"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentStatus = null;
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshStatus();
+            loadTables();
+            
+            // Setup modal
+            const modal = document.getElementById('tableModal');
+            const span = document.getElementsByClassName('close')[0];
+            
+            span.onclick = function() {
+                modal.style.display = 'none';
+            }
+            
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = 'none';
+                }
+            }
+        });
+
+        function showMessage(message, type = 'success') {
+            const messageArea = document.getElementById('message-area');
+            messageArea.innerHTML = `<div class="${type}">${message}</div>`;
+            
+            // Auto-clear after 5 seconds
+            setTimeout(() => {
+                messageArea.innerHTML = '';
+            }, 5000);
+        }
+
+        async function refreshStatus() {
+            try {
+                const response = await fetch('/api/schema/status');
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentStatus = data.status;
+                    displayStatus(data.status);
+                } else {
+                    showMessage('Failed to load schema status: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('Error loading schema status: ' + error.message, 'error');
+            }
+        }
+
+        function displayStatus(status) {
+            const statusDiv = document.getElementById('schema-status');
+            statusDiv.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div>
+                        <strong>Total Tables:</strong> ${status.total_tables}<br>
+                        <strong>Schema Version:</strong> ${status.schema_version}
+                    </div>
+                    <div>
+                        <strong>Vector Database:</strong> ${status.vector_database_ready ? '✅ Ready' : '❌ Not Ready'}<br>
+                        <strong>Embedding Model:</strong> ${status.embedding_model_ready ? '✅ Ready' : '❌ Not Ready'}
+                    </div>
+                    <div>
+                        <strong>Chat Model:</strong> ${status.chat_model_ready ? '✅ Ready' : '❌ Not Ready'}<br>
+                        <strong>Last Updated:</strong> ${status.last_updated ? new Date(status.last_updated).toLocaleString() : 'Never'}
+                    </div>
+                </div>
+                <div style="margin-top: 10px;">
+                    <strong>Tables:</strong> ${status.tables.join(', ')}
+                </div>
+            `;
+        }
+
+        async function checkSchemaChanges() {
+            try {
+                showMessage('Checking for schema changes...', 'info');
+                
+                const response = await fetch('/api/schema/check-changes', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    const updateInfo = data.update_info;
+                    if (updateInfo.has_changes) {
+                        showMessage(`Schema changes detected! ${updateInfo.tables_updated.length} tables updated.`, 'warning');
+                        refreshStatus();
+                        loadTables();
+                    } else {
+                        showMessage('No schema changes detected.', 'success');
+                    }
+                } else {
+                    showMessage('Failed to check schema changes: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('Error checking schema changes: ' + error.message, 'error');
+            }
+        }
+
+        async function forceSchemaUpdate() {
+            if (!confirm('This will force a complete schema refresh. Continue?')) {
+                return;
+            }
+            
+            try {
+                showMessage('Forcing complete schema update...', 'info');
+                
+                const response = await fetch('/api/schema/force-update', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage('Schema update completed successfully!', 'success');
+                    refreshStatus();
+                    loadTables();
+                } else {
+                    showMessage('Schema update failed: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('Error during schema update: ' + error.message, 'error');
+            }
+        }
+
+        async function loadTables() {
+            try {
+                const response = await fetch('/api/schema/tables');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayTables(data.tables);
+                } else {
+                    showMessage('Failed to load tables: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('Error loading tables: ' + error.message, 'error');
+            }
+        }
+
+        function displayTables(tables) {
+            const tablesGrid = document.getElementById('tables-grid');
+            
+            if (tables.length === 0) {
+                tablesGrid.innerHTML = '<div class="loading">No tables found</div>';
+                return;
+            }
+            
+            tablesGrid.innerHTML = tables.map(table => `
+                <div class="table-card" onclick="showTableDetails('${table.table_name}')">
+                    <div class="table-name">${table.table_name}</div>
+                    <div class="table-stats">
+                        <span>📊 ${table.column_count} columns</span>
+                        <span>🔑 ${table.primary_keys.length} PKs</span>
+                        <span>🔗 ${table.foreign_key_count} FKs</span>
+                    </div>
+                    ${table.table_description ? `<div style="margin-top: 8px; font-size: 0.85rem; color: #6c757d;">${table.table_description}</div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        async function showTableDetails(tableName) {
+            try {
+                const response = await fetch(`/api/schema/table/${tableName}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const table = data.table;
+                    const modal = document.getElementById('tableModal');
+                    const detailsDiv = document.getElementById('table-details');
+                    
+                    detailsDiv.innerHTML = `
+                        <h2>📋 ${table.table_name}</h2>
+                        ${table.table_description ? `<p><strong>Description:</strong> ${table.table_description}</p>` : ''}
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                            <div><strong>Columns:</strong> ${table.column_count}</div>
+                            <div><strong>Primary Keys:</strong> ${table.primary_keys.join(', ') || 'None'}</div>
+                            <div><strong>Foreign Keys:</strong> ${table.foreign_keys.length}</div>
+                            <div><strong>Last Updated:</strong> ${table.last_updated ? new Date(table.last_updated).toLocaleString() : 'Unknown'}</div>
+                        </div>
+                        
+                        <h3>📊 Columns</h3>
+                        <div class="column-list">
+                            ${table.columns.map(col => `
+                                <div class="column-item">
+                                    <div class="column-name">
+                                        ${col.name}
+                                        ${col.is_primary_key ? ' 🔑' : ''}
+                                        ${col.is_foreign_key ? ' 🔗' : ''}
+                                        ${!col.is_nullable ? ' ⚠️' : ''}
+                                    </div>
+                                    <div class="column-type">${col.data_type}</div>
+                                    ${col.description ? `<div style="font-size: 0.8rem; color: #6c757d;">${col.description}</div>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        ${table.foreign_keys.length > 0 ? `
+                            <h3>🔗 Foreign Key Relationships</h3>
+                            <div style="background: #f8f9fa; padding: 10px; border-radius: 5px;">
+                                ${table.foreign_keys.map(fk => `
+                                    <div style="margin-bottom: 5px;">
+                                        <strong>${fk.column}</strong> → ${fk.references_table}.${fk.references_column}
+                                        ${fk.constraint_name ? ` (${fk.constraint_name})` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    `;
+                    
+                    modal.style.display = 'block';
+                } else {
+                    showMessage('Failed to load table details: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('Error loading table details: ' + error.message, 'error');
+            }
+        }
+
+        function showAllTables() {
+            loadTables();
+        }
+    </script>
+</body>
+</html>

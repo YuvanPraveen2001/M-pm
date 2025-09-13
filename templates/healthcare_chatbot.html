@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Healthcare Appointment Booking Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c5530 0%, #1e3a2e 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chat-container {
+            width: 100%;
+            height: 95vh;
+            background: white;
+            border-radius: 25px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            margin: 0 10px;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #2c5530 0%, #4a7c59 100%);
+            color: white;
+            padding: 25px;
+            text-align: center;
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-content {
+            flex: 1;
+        }
+
+        .debug-toggle {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .debug-toggle:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .debug-toggle.active {
+            background: rgba(255, 255, 255, 0.4);
+            border-color: rgba(255, 255, 255, 0.6);
+        }
+
+        .chat-header h1 {
+            font-size: 26px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .chat-header p {
+            opacity: 0.9;
+            font-size: 15px;
+        }
+
+        .booking-progress {
+            background: rgba(255, 255, 255, 0.1);
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            display: none;
+        }
+
+        .progress-step {
+            display: inline-block;
+            margin: 0 5px;
+            padding: 5px 10px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .progress-step.active {
+            background: rgba(255, 255, 255, 0.3);
+            font-weight: bold;
+        }
+
+        .progress-step.completed {
+            background: #4CAF50;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            width: 14px;
+            height: 14px;
+            background: #4CAF50;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 25px 40px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            text-align: right;
+        }
+
+        .message.bot {
+            text-align: left;
+        }
+
+        .message-bubble {
+            display: inline-block;
+            max-width: 75%;
+            padding: 15px 20px;
+            border-radius: 20px;
+            word-wrap: break-word;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+
+        .message.user .message-bubble {
+            background: linear-gradient(135deg, #2c5530 0%, #4a7c59 100%);
+            color: white;
+        }
+
+        .message.bot .message-bubble {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            position: relative;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .message.bot .message-bubble::before {
+            content: '🏥';
+            position: absolute;
+            left: -35px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 22px;
+        }
+
+        .suggestions {
+            margin-top: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .suggestion-chip {
+            background: #e8f5e8;
+            color: #2c5530;
+            border: 1px solid #c8e6c9;
+            padding: 10px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .suggestion-chip:hover {
+            background: #2c5530;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .step-data {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f0f8f0;
+            border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+            font-size: 12px;
+        }
+
+        .step-data h4 {
+            color: #2c5530;
+            margin-bottom: 5px;
+        }
+
+        .chain-of-thoughts {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 8px 0;
+            font-size: 12px;
+            color: #6c757d;
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .chain-of-thoughts.expanded {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .chain-of-thoughts h4 {
+            color: #495057;
+            margin-bottom: 8px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .thought-step {
+            padding: 4px 8px;
+            margin: 2px 0;
+            border-radius: 4px;
+            background: white;
+            border-left: 3px solid #28a745;
+            font-family: 'Courier New', monospace;
+        }
+
+        .thought-step.error {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+
+        .thought-step.warning {
+            border-left-color: #ffc107;
+            background: #fffbf0;
+        }
+
+        .retry-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 8px;
+            margin: 8px 0;
+            font-size: 12px;
+            color: #856404;
+        }
+
+        .processing-time {
+            font-size: 11px;
+            color: #6c757d;
+            text-align: right;
+            margin-top: 8px;
+        }
+
+        .chat-input-container {
+            padding: 25px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #ddd;
+            border-radius: 25px;
+            font-size: 14px;
+            resize: none;
+            min-height: 50px;
+            max-height: 120px;
+            outline: none;
+            transition: border-color 0.3s ease;
+            font-family: inherit;
+        }
+
+        .chat-input:focus {
+            border-color: #2c5530;
+            box-shadow: 0 0 0 3px rgba(44, 85, 48, 0.1);
+        }
+
+        .send-button {
+            background: linear-gradient(135deg, #2c5530 0%, #4a7c59 100%);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+            font-size: 18px;
+        }
+
+        .send-button:hover {
+            transform: scale(1.1);
+        }
+
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .typing-indicator {
+            display: none;
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        .typing-indicator .message-bubble {
+            background: white;
+            border: 1px solid #e0e0e0;
+            padding: 15px 20px;
+        }
+
+        .typing-dots {
+            display: inline-flex;
+            gap: 5px;
+        }
+
+        .typing-dots span {
+            width: 8px;
+            height: 8px;
+            background: #999;
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+            40% { transform: scale(1.2); opacity: 1; }
+        }
+
+        /* Live Chain of Thought (Claude-style) */
+        .live-thinking {
+            display: none;
+            text-align: left;
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .live-thinking .message-bubble {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 15px 20px;
+            max-width: 85%;
+            position: relative;
+        }
+
+        .live-thinking .message-bubble::before {
+            content: '🧠';
+            position: absolute;
+            left: -35px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 22px;
+        }
+
+        .thinking-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            color: #6c757d;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .thinking-loader {
+            display: inline-flex;
+            gap: 3px;
+        }
+
+        .thinking-loader span {
+            width: 6px;
+            height: 6px;
+            background: #28a745;
+            border-radius: 50%;
+            animation: thinkingPulse 1.2s infinite ease-in-out;
+        }
+
+        .thinking-loader span:nth-child(1) { animation-delay: -0.24s; }
+        .thinking-loader span:nth-child(2) { animation-delay: -0.12s; }
+        .thinking-loader span:nth-child(3) { animation-delay: 0s; }
+
+        @keyframes thinkingPulse {
+            0%, 80%, 100% { 
+                transform: scale(0.6); 
+                opacity: 0.4; 
+            }
+            40% { 
+                transform: scale(1); 
+                opacity: 1; 
+            }
+        }
+
+        .current-step {
+            font-size: 14px;
+            color: #495057;
+            padding: 8px 0;
+            font-weight: 500;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .step-number {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #28a745;
+            color: white;
+            text-align: center;
+            line-height: 24px;
+            font-size: 12px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .step-text {
+            flex: 1;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .booking-summary {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e8f5e8;
+            border-radius: 10px;
+            border: 1px solid #c8e6c9;
+        }
+
+        .booking-summary h4 {
+            color: #2c5530;
+            margin-bottom: 10px;
+        }
+
+        .booking-summary-item {
+            margin: 5px 0;
+            font-size: 13px;
+        }
+
+        .booking-summary-item strong {
+            color: #2c5530;
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 13px;
+            border-left: 4px solid #f44336;
+        }
+
+        .success-message {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 13px;
+            border-left: 4px solid #4caf50;
+        }
+
+        .welcome-message {
+            text-align: center;
+            padding: 50px 25px;
+            color: #666;
+        }
+
+        .welcome-message h2 {
+            color: #2c5530;
+            margin-bottom: 15px;
+            font-size: 24px;
+        }
+
+        .welcome-message p {
+            margin-bottom: 25px;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .quick-action {
+            background: #fff3e0;
+            color: #2c5530;
+            border: 2px solid #2c5530;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .quick-action:hover {
+            background: #2c5530;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .chat-container {
+                height: 100vh;
+                border-radius: 0;
+                max-width: 100%;
+            }
+
+            .message-bubble {
+                max-width: 85%;
+            }
+
+            .chat-header h1 {
+                font-size: 22px;
+            }
+
+            .quick-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .quick-action {
+                width: 80%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="status-indicator"></div>
+            <div class="header-content">
+                <h1>🏥 Healthcare Appointment Booking</h1>
+                <p>Advanced AI assistant with live chain of thought</p>
+            </div>
+            
+            <div class="booking-progress" id="bookingProgress">
+                <div class="progress-step" data-step="patient_search">Patient</div>
+                <div class="progress-step" data-step="employee_search">Provider</div>
+                <div class="progress-step" data-step="auth_selection">Authorization</div>
+                <div class="progress-step" data-step="location_selection">Location</div>
+                <div class="progress-step" data-step="employee_suggestion">Matching</div>
+                <div class="progress-step" data-step="final_confirmation">Booking</div>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="welcome-message">
+                <h2>Welcome to Healthcare Booking! 👩‍⚕️</h2>
+                <p>I'm your intelligent appointment booking assistant. I'll guide you through a comprehensive booking process that includes patient verification, provider matching, insurance authorization, and location selection.</p>
+                
+                <div class="quick-actions">
+                    <div class="quick-action" onclick="sendQuickMessage('I want to book an appointment')">
+                        📅 Book Appointment
+                    </div>
+                    <div class="quick-action" onclick="sendQuickMessage('Help me schedule for a patient')">
+                        👤 Schedule for Patient
+                    </div>
+                    <div class="quick-action" onclick="sendQuickMessage('Find available providers')">
+                        🔍 Find Providers
+                    </div>
+                </div>
+            </div>
+
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="message-bubble">
+                    <div class="typing-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Chain of Thought (Claude-style) -->
+            <div class="live-thinking" id="liveThinking">
+                <div class="message-bubble">
+                    <div class="thinking-header">
+                        <span>🧠 Thinking</span>
+                        <div class="thinking-loader">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+                    <div class="current-step" id="currentStep">
+                        <span class="step-number" id="stepNumber">1</span>
+                        <span class="step-text" id="stepText">Processing your request...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <div class="chat-input-wrapper">
+                <textarea 
+                    id="chatInput" 
+                    class="chat-input" 
+                    placeholder="Type your message here..."
+                    rows="1"
+                    onkeypress="handleKeyPress(event)"
+                ></textarea>
+                <button id="sendButton" class="send-button" onclick="sendMessage()">
+                    <span>➤</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Socket.IO Client -->
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <script>
+        let sessionId = null;
+        let isWaitingForResponse = false;
+        let currentBookingStep = 'initial';
+        let socket = null;
+        let websocketSessionId = null;
+        let currentStepNumber = 0;
+        let liveThoughtsEventSource = null;
+
+        // Step descriptions for better UX
+        const stepDescriptions = [
+            "Processing your request...",
+            "Analyzing intent and entities...",
+            "Connecting to healthcare database...",
+            "Generating specialized query...",
+            "Executing database operations...",
+            "Formatting results...",
+            "Finalizing response..."
+        ];
+
+        // Initialize Server-Sent Events for live thoughts
+        function initializeLiveThoughts(sessionId) {
+            if (liveThoughtsEventSource) {
+                liveThoughtsEventSource.close();
+            }
+            
+            liveThoughtsEventSource = new EventSource(`/api/live-thoughts/${sessionId}`);
+            
+            liveThoughtsEventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'thought') {
+                    updateCurrentStep(data.data.thought);
+                } else if (data.type === 'complete') {
+                    console.log('💭 Live thoughts stream complete');
+                    liveThoughtsEventSource.close();
+                    liveThoughtsEventSource = null;
+                }
+            };
+            
+            liveThoughtsEventSource.onerror = function(event) {
+                console.warn('⚠️ Live thoughts stream error:', event);
+                liveThoughtsEventSource.close();
+                liveThoughtsEventSource = null;
+            };
+        }
+
+        // Update the current step display
+        function updateCurrentStep(thoughtText) {
+            const stepNumberEl = document.getElementById('stepNumber');
+            const stepTextEl = document.getElementById('stepText');
+            
+            if (!stepNumberEl || !stepTextEl) return;
+            
+            currentStepNumber++;
+            
+            // Update step number
+            stepNumberEl.textContent = currentStepNumber;
+            
+            // Simplify the thought text for better UX
+            let displayText = thoughtText;
+            if (thoughtText.includes('🔍') && thoughtText.includes('Processing')) {
+                displayText = stepDescriptions[0];
+            } else if (thoughtText.includes('🤖') && thoughtText.includes('intent')) {
+                displayText = stepDescriptions[1];
+            } else if (thoughtText.includes('🗄️') && thoughtText.includes('database')) {
+                displayText = stepDescriptions[2];
+            } else if (thoughtText.includes('⚙️') || thoughtText.includes('SQL')) {
+                displayText = stepDescriptions[3];
+            } else if (thoughtText.includes('Executing') || thoughtText.includes('query')) {
+                displayText = stepDescriptions[4];
+            } else if (thoughtText.includes('Formatting') || thoughtText.includes('results')) {
+                displayText = stepDescriptions[5];
+            } else if (thoughtText.includes('✅') && thoughtText.includes('Success')) {
+                displayText = stepDescriptions[6];
+            } else {
+                // Use a generic description based on step number
+                displayText = stepDescriptions[Math.min(currentStepNumber - 1, stepDescriptions.length - 1)] || "Processing...";
+            }
+            
+            // Add animation effect
+            stepTextEl.style.opacity = '0.5';
+            setTimeout(() => {
+                stepTextEl.textContent = displayText;
+                stepTextEl.style.opacity = '1';
+            }, 150);
+            
+            // Scroll to bottom
+            const messagesContainer = document.getElementById('chatMessages');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Show live thinking indicator
+        function showLiveThinking() {
+            document.getElementById('liveThinking').style.display = 'block';
+            currentStepNumber = 0;
+            
+            // Reset to initial state
+            document.getElementById('stepNumber').textContent = '1';
+            document.getElementById('stepText').textContent = stepDescriptions[0];
+            
+            const messagesContainer = document.getElementById('chatMessages');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Hide live thinking indicator
+        function hideLiveThinking() {
+            document.getElementById('liveThinking').style.display = 'none';
+            if (liveThoughtsEventSource) {
+                liveThoughtsEventSource.close();
+                liveThoughtsEventSource = null;
+            }
+        }
+
+        // Auto-resize textarea
+        const chatInput = document.getElementById('chatInput');
+        chatInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function sendQuickMessage(message) {
+            chatInput.value = message;
+            sendMessage();
+        }
+
+        function sendMessage() {
+            const message = chatInput.value.trim();
+            if (!message || isWaitingForResponse) return;
+
+            // Clear welcome message
+            const welcomeMessage = document.querySelector('.welcome-message');
+            if (welcomeMessage) {
+                welcomeMessage.style.display = 'none';
+            }
+
+            // Add user message to chat
+            addMessage(message, 'user');
+            
+            // Clear input and disable send button
+            chatInput.value = '';
+            chatInput.style.height = 'auto';
+            isWaitingForResponse = true;
+            document.getElementById('sendButton').disabled = true;
+            
+            // Show live thinking
+            showLiveThinking();
+
+            // Send to backend
+            fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: message,
+                    session_id: sessionId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    hideLiveThinking();
+                    addMessage('Sorry, I encountered an error: ' + data.error, 'bot', [], 'error');
+                } else {
+                    // Update session ID and start live thoughts stream if new session
+                    if (!sessionId || sessionId !== data.session_id) {
+                        sessionId = data.session_id;
+                        initializeLiveThoughts(sessionId);
+                    }
+                    
+                    currentBookingStep = data.booking_step || 'initial';
+                    
+                    // Update progress
+                    updateBookingProgress(currentBookingStep);
+                    
+                    // Wait a bit for live thoughts to complete, then show response
+                    setTimeout(() => {
+                        hideLiveThinking();
+                        
+                        // Add bot response
+                        addMessage(
+                            data.response, 
+                            'bot', 
+                            data.suggestions, 
+                            null, 
+                            data.step_data,
+                            data.chain_of_thoughts || [],
+                            data.processing_time || 0,
+                            data.retry_info || {}
+                        );
+                    }, 2000); // Wait 2 seconds for thoughts to stream
+                }
+                
+                isWaitingForResponse = false;
+                document.getElementById('sendButton').disabled = false;
+                chatInput.focus();
+            })
+            .catch(error => {
+                hideLiveThinking();
+                console.error('Error:', error);
+                addMessage('Sorry, I\'m having trouble connecting. Please try again.', 'bot', [], 'error');
+                isWaitingForResponse = false;
+                document.getElementById('sendButton').disabled = false;
+            });
+        }
+
+        function addMessage(text, sender, suggestions = [], messageType = null, stepData = null, chainOfThoughts = [], processingTime = 0, retryInfo = {}) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            
+            // Convert markdown-like formatting
+            let formattedText = text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/\n/g, '<br>');
+            
+            bubble.innerHTML = formattedText;
+            messageDiv.appendChild(bubble);
+
+            // Add chain of thoughts for bot messages
+            if (sender === 'bot' && chainOfThoughts && chainOfThoughts.length > 0) {
+                const chainDiv = createChainOfThoughtsDiv(chainOfThoughts, processingTime, retryInfo);
+                messageDiv.appendChild(chainDiv);
+            }
+
+            // Add error/success styling
+            if (messageType === 'error') {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.innerHTML = formattedText;
+                messageDiv.appendChild(errorDiv);
+            } else if (messageType === 'success') {
+                const successDiv = document.createElement('div');
+                successDiv.className = 'success-message';
+                successDiv.innerHTML = formattedText;
+                messageDiv.appendChild(successDiv);
+            }
+
+            // Add step data if provided
+            if (stepData && sender === 'bot') {
+                const stepDiv = document.createElement('div');
+                stepDiv.className = 'step-data';
+                
+                if (stepData.patients) {
+                    stepDiv.innerHTML = `<h4>Patients Found:</h4>${stepData.patients.length} matches`;
+                } else if (stepData.employees) {
+                    stepDiv.innerHTML = `<h4>Providers Found:</h4>${stepData.employees.length} matches`;
+                } else if (stepData.authorizations) {
+                    stepDiv.innerHTML = `<h4>Authorizations:</h4>${stepData.authorizations.length} available`;
+                } else if (stepData.locations) {
+                    stepDiv.innerHTML = `<h4>Locations:</h4>${stepData.locations.length} available`;
+                } else if (stepData.suggested_employees) {
+                    stepDiv.innerHTML = `<h4>Suggested Providers:</h4>${stepData.suggested_employees.length} eligible`;
+                } else if (stepData.sql_executed) {
+                    stepDiv.innerHTML = `<h4>📊 Query Results:</h4>${stepData.results_count} records found (SQL executed)`;
+                } else if (stepData.query_type) {
+                    stepDiv.innerHTML = `<h4>Query Type:</h4>${stepData.query_type.charAt(0).toUpperCase() + stepData.query_type.slice(1)}`;
+                }
+                
+                messageDiv.appendChild(stepDiv);
+            }
+
+            // Add suggestions if provided
+            if (suggestions && suggestions.length > 0) {
+                const suggestionsDiv = document.createElement('div');
+                suggestionsDiv.className = 'suggestions';
+                
+                suggestions.forEach(suggestion => {
+                    const chip = document.createElement('div');
+                    chip.className = 'suggestion-chip';
+                    chip.textContent = suggestion;
+                    chip.onclick = () => {
+                        chatInput.value = suggestion;
+                        sendMessage();
+                    };
+                    suggestionsDiv.appendChild(chip);
+                });
+                
+                messageDiv.appendChild(suggestionsDiv);
+            }
+
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        let showChainOfThoughts = false;
+
+        function toggleChainOfThoughts() {
+            showChainOfThoughts = !showChainOfThoughts;
+            const toggle = document.getElementById('debugToggle');
+            const chains = document.querySelectorAll('.chain-of-thoughts');
+            
+            if (showChainOfThoughts) {
+                toggle.classList.add('active');
+                toggle.textContent = '🧠 Hide Thoughts';
+                chains.forEach(chain => chain.classList.add('expanded'));
+            } else {
+                toggle.classList.remove('active');
+                toggle.textContent = '🧠 Chain of Thoughts';
+                chains.forEach(chain => chain.classList.remove('expanded'));
+            }
+        }
+
+        function createChainOfThoughtsDiv(chainOfThoughts, processingTime, retryInfo) {
+            const chainDiv = document.createElement('div');
+            chainDiv.className = `chain-of-thoughts ${showChainOfThoughts ? 'expanded' : ''}`;
+            
+            let html = '<h4>🧠 Chain of Thoughts</h4>';
+            
+            chainOfThoughts.forEach(thought => {
+                let thoughtClass = 'thought-step';
+                if (thought.includes('Error') || thought.includes('❌') || thought.includes('💥')) {
+                    thoughtClass += ' error';
+                } else if (thought.includes('Warning') || thought.includes('⚠️') || thought.includes('⏳')) {
+                    thoughtClass += ' warning';
+                }
+                html += `<div class="${thoughtClass}">${thought}</div>`;
+            });
+            
+            if (retryInfo && (retryInfo.total_retries > 0 || retryInfo.error)) {
+                html += '<div class="retry-info">';
+                html += '<strong>🔄 Retry Information:</strong><br>';
+                if (retryInfo.total_retries) {
+                    html += `Attempts: ${retryInfo.total_retries}<br>`;
+                }
+                if (retryInfo.final_error) {
+                    html += `Final Error: ${retryInfo.final_error}<br>`;
+                }
+                html += '</div>';
+            }
+            
+            if (processingTime > 0) {
+                html += `<div class="processing-time">⏱️ Processing time: ${processingTime.toFixed(2)}s</div>`;
+            }
+            
+            chainDiv.innerHTML = html;
+            return chainDiv;
+        }
+
+        function updateBookingProgress(step) {
+            const progressContainer = document.getElementById('bookingProgress');
+            
+            if (step !== 'initial') {
+                progressContainer.style.display = 'block';
+                
+                // Reset all steps
+                const steps = progressContainer.querySelectorAll('.progress-step');
+                steps.forEach(s => {
+                    s.classList.remove('active', 'completed');
+                });
+                
+                // Mark current step as active
+                const currentStep = progressContainer.querySelector(`[data-step="${step}"]`);
+                if (currentStep) {
+                    currentStep.classList.add('active');
+                }
+                
+                // Mark previous steps as completed
+                const stepOrder = ['patient_search', 'employee_search', 'auth_selection', 'location_selection', 'employee_suggestion', 'final_confirmation'];
+                const currentIndex = stepOrder.indexOf(step);
+                
+                for (let i = 0; i < currentIndex; i++) {
+                    const prevStep = progressContainer.querySelector(`[data-step="${stepOrder[i]}"]`);
+                    if (prevStep) {
+                        prevStep.classList.add('completed');
+                    }
+                }
+            }
+        }
+
+        function showTypingIndicator() {
+            document.getElementById('typingIndicator').style.display = 'block';
+            const messagesContainer = document.getElementById('chatMessages');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            document.getElementById('typingIndicator').style.display = 'none';
+        }
+
+        // Focus on input when page loads
+        window.addEventListener('load', () => {
+            chatInput.focus();
+            
+            // Initialize WebSocket for real-time chain of thoughts
+            try {
+                initializeWebSocket();
+                console.log('✅ WebSocket initialized for real-time chain of thoughts');
+            } catch (error) {
+                console.warn('⚠️ WebSocket not available:', error);
+            }
+        });
+
+        // Add initial greeting after a delay
+        setTimeout(() => {
+            addMessage(
+                "Hello! I'm your healthcare appointment booking assistant. I'll help you through our comprehensive booking process that includes:\n\n• **Patient verification** with fuzzy name matching\n• **Provider selection** based on qualifications\n• **Insurance authorization** verification\n• **Location and eligibility** checking\n• **Smart provider suggestions**\n\nLet's get started! Would you like to book an appointment?",
+                'bot',
+                [
+                    "Book an appointment",
+                    "Search for a patient", 
+                    "Find providers",
+                    "How does this work?"
+                ]
+            );
+        }, 1500);
+    </script>
+</body>
+</html>
